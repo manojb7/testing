@@ -1,0 +1,12 @@
+---
+landscape: (( &temporary ( merge ) ))
+config: (( &temporary ( merge ) ))
+# imports: (( &temporary ( merge ) ))
+# uaa_clients: (( &temporary ( merge ) ))
+# uaa_users: (( &temporary ( merge ) ))
+# deployments: (( &temporary ( merge ) ))
+# product_config: (( &temporary ( merge ) ))
+
+context:
+  landscape: (( .landscape ))
+  config: (( .config ))

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+CONTEXT="$1"
+JSON_CTX="$(yaml2json < "$1")"
+
+fromContext() {
+  jq -r "$1" <<< "$JSON_CTX"
+}
+
+
+

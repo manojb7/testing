@@ -1,0 +1,683 @@
+#!/usr/bin/env python3
+"""
+generate-config-descriptor
+
+This script generates a Gardener cluster configuration descriptor (config-descriptor.yml)
+in the IAC component's config directory.
+
+Usage: 
+    iac -d gardener-cluster action generate-config-descriptor
+"""
+
+import argparse
+import subprocess
+import yaml
+import os
+import sys
+import json
+import shutil
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+
+
+def read_context(context_file):
+    """Read the IAC context file"""
+    try:
+        with open(context_file, 'r') as f:
+            context = yaml.safe_load(f)
+        return context
+    except Exception as e:
+        print(f"Warning: Could not read context file: {e}")
+        return {}
+
+
+def get_landscape_info() -> Dict[str, Any]:
+    """Get landscape information from landscape-info command"""
+    try:
+        result = subprocess.run(
+            ["landscape-info"], capture_output=True, text=True, check=False
+        )
+        if result.returncode != 0:
+            return {}
+
+        landscape_info = {}
+        for line in result.stdout.splitlines():
+            if ":" in line:
+                key, value = line.split(":", 1)
+                landscape_info[key.strip()] = value.strip()
+
+        # Convert landscape_info dictionary to a more structured format
+        structured_info = {
+            "type": landscape_info.get("landscape_type", "aws"),
+            "environment": landscape_info.get("landscape_environment", "dev"),
+            "label": landscape_info.get("landscape_label", "")
+        }
+
+        # Add provider-specific information
+        landscape_type = structured_info["type"]
+        
+        # AWS specific information
+        if landscape_type == "aws":
+            # Get proper AWS region
+            if "aws_default_region" in landscape_info:
+                structured_info["aws_default_region"] = landscape_info["aws_default_region"]
+            elif "landscape_domain" in landscape_info:
+                structured_info["aws_default_region"] = extract_aws_region_from_domain(landscape_info["landscape_domain"])
+            
+            if "aws_landscape_zones" in landscape_info:
+                structured_info["aws_landscape_zones"] = landscape_info["aws_landscape_zones"].split(",")
+        
+        # Azure specific information
+        elif landscape_type == "azure":
+            if "azure_region" in landscape_info:
+                structured_info["azure_region"] = landscape_info["azure_region"]
+            
+            if "azure_zones" in landscape_info:
+                structured_info["azure_zones"] = landscape_info["azure_zones"].split(",")
+        
+        # GCP specific information
+        elif landscape_type == "gcp":
+            if "gcp_region" in landscape_info:
+                structured_info["gcp_region"] = landscape_info["gcp_region"]
+            
+            if "gcp_zones" in landscape_info:
+                structured_info["gcp_zones"] = landscape_info["gcp_zones"].split(",")
+            
+            if "gcp_project" in landscape_info:
+                structured_info["gcp_project"] = landscape_info["gcp_project"]
+
+        return structured_info
+    except Exception as e:
+        print(f"Warning: Could not get landscape information: {e}")
+        return {}
+
+
+def get_volume_type_options(provider: str) -> List[str]:
+    """Get volume type options for a specific cloud provider"""
+    if provider == "aws":
+        return ["gp2", "gp3", "io1", "st1"]
+    elif provider == "azure":
+        return ["Standard_LRS", "Premium_LRS", "StandardSSD_LRS"]
+    elif provider == "gcp":
+        return ["pd-standard", "pd-balanced", "pd-ssd"]
+    else:
+        return ["default-volume-type"]
+
+
+def get_default_volume_type(provider: str) -> str:
+    """Get default volume type for a specific cloud provider"""
+    if provider == "aws":
+        return "gp2"
+    elif provider == "azure":
+        return "Premium_LRS"
+    elif provider == "gcp":
+        return "pd-standard"
+    else:
+        return "default-volume-type"
+
+
+def get_machine_type_options(provider: str) -> List[str]:
+    """Get machine type options for a specific cloud provider"""
+    if provider == "aws":
+        return [
+            "m5.large",      # General purpose: 2 vCPU, 8 GiB RAM
+            "m5.xlarge",     # General purpose: 4 vCPU, 16 GiB RAM
+            "m5.2xlarge",    # General purpose: 8 vCPU, 32 GiB RAM
+        ]
+    elif provider == "azure":
+        return [
+            "Standard_D2s_v3",   # General purpose: 2 vCPU, 8 GiB RAM
+            "Standard_D4s_v3",   # General purpose: 4 vCPU, 16 GiB RAM
+            "Standard_D8s_v3",   # General purpose: 8 vCPU, 32 GiB RAM
+        ]
+    elif provider == "gcp":
+        return [
+            "n1-standard-2",     # General purpose: 2 vCPU, 7.5 GiB RAM
+            "n1-standard-4",     # General purpose: 4 vCPU, 15 GiB RAM
+            "n1-standard-8",     # General purpose: 8 vCPU, 30 GiB RAM
+        ]
+    else:
+        return ["default-machine-type"]
+
+
+def get_default_machine_type(provider: str) -> str:
+    """Get default machine type for a specific cloud provider"""
+    if provider == "aws":
+        return "m5.large"
+    elif provider == "azure":
+        return "Standard_D2s_v3"
+    elif provider == "gcp":
+        return "n1-standard-2"
+    else:
+        return "default-machine-type"
+
+
+def extract_aws_region_from_domain(domain: str) -> str:
+    """
+    Extract proper AWS region from domain string or other identifiers.
+    Maps known landscape identifiers to proper AWS regions.
+    """
+    # Strip any trailing domains
+    if domain:
+        domain_part = domain.split('.')[0].lower()
+        
+        # Map of known landscape identifiers to AWS regions
+        region_mapping = {
+            "stagingaws": "us-east-1",
+            "prodaws": "us-east-1",
+            "devaws": "us-east-1",
+            "euaws": "eu-central-1",
+            "apaws": "ap-southeast-1",
+        }
+        
+        # Return mapped region if found, otherwise return a default
+        if domain_part in region_mapping:
+            return region_mapping[domain_part]
+    
+    # Default to us-east-1 if no mapping found
+    return "us-east-1"
+
+
+def extract_landscape_from_context(context) -> Dict[str, Any]:
+    """Extract landscape information from IAC context"""
+    try:
+        landscape_info = {}
+        
+        # Try to get landscape type from context
+        if context and 'context' in context:
+            ctx = context['context']
+            
+            # Get landscape type
+            if 'landscape' in ctx:
+                landscape_data = ctx['landscape']
+                if 'type' in landscape_data:
+                    landscape_info["type"] = landscape_data['type']
+                
+                if 'environment' in landscape_data:
+                    landscape_info["environment"] = landscape_data['environment']
+                
+                # Extract provider-specific information
+                if landscape_info.get("type") == "aws":
+                    # Extract proper AWS region from domain
+                    if 'domain' in landscape_data:
+                        landscape_info["aws_default_region"] = extract_aws_region_from_domain(landscape_data['domain'])
+                    
+                    # Extract zones if available
+                    if 'vmtags' in landscape_data:
+                        # Try to extract region information from VM tags if available
+                        pass
+                
+                elif landscape_info.get("type") == "azure":
+                    # Extract Azure-specific details if needed
+                    pass
+                
+                elif landscape_info.get("type") == "gcp":
+                    # Extract GCP-specific details if needed
+                    pass
+                    
+            # Try alternative path for landscape information
+            elif 'imports' in ctx and 'landscape' in ctx['imports']:
+                landscape = ctx['imports']['landscape']
+                if 'type' in landscape:
+                    landscape_info["type"] = landscape['type']
+                
+                if 'environment' in landscape:
+                    landscape_info["environment"] = landscape['environment']
+                
+                # AWS specific
+                if landscape_info.get("type") == "aws":
+                    if 'aws_default_region' in landscape:
+                        landscape_info["aws_default_region"] = landscape['aws_default_region']
+                    elif 'domain' in landscape:
+                        landscape_info["aws_default_region"] = extract_aws_region_from_domain(landscape['domain'])
+                    
+                    if 'aws_landscape_zones' in landscape:
+                        landscape_info["aws_landscape_zones"] = landscape['aws_landscape_zones']
+                
+                # Azure specific
+                elif landscape_info.get("type") == "azure":
+                    if 'azure_region' in landscape:
+                        landscape_info["azure_region"] = landscape['azure_region']
+                    
+                    if 'azure_zones' in landscape:
+                        landscape_info["azure_zones"] = landscape['azure_zones']
+                
+                # GCP specific
+                elif landscape_info.get("type") == "gcp":
+                    if 'gcp_region' in landscape:
+                        landscape_info["gcp_region"] = landscape['gcp_region']
+                    
+                    if 'gcp_zones' in landscape:
+                        landscape_info["gcp_zones"] = landscape['gcp_zones']
+                    
+                    if 'gcp_project' in landscape:
+                        landscape_info["gcp_project"] = landscape['gcp_project']
+        
+        return landscape_info
+    except Exception as e:
+        print(f"Warning: Could not extract landscape info from context: {e}")
+        return {}
+
+
+def backup_existing_config(file_path: str) -> None:
+    """Backup the existing config file if it exists"""
+    if os.path.exists(file_path):
+        # Create backup filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = f"{file_path}.backup_{timestamp}"
+        
+        try:
+            # Copy the existing file to backup
+            shutil.copy2(file_path, backup_path)
+            print(f"Backup created: {backup_path}")
+        except Exception as e:
+            print(f"Warning: Failed to create backup: {e}")
+
+
+def generate_config_descriptor(context_file=None, cluster_name: str = "montioring", provider: Optional[str] = None) -> Dict[str, Any]:
+    """Generate the configuration descriptor dictionary"""
+    
+    # Try to get landscape info from context file first
+    landscape = {}
+    if context_file:
+        context = read_context(context_file)
+        landscape = extract_landscape_from_context(context)
+    
+    # If we couldn't get info from context, try landscape-info command
+    if not landscape:
+        landscape = get_landscape_info()
+    
+    # Use provided provider or default to landscape type or "aws"
+    if provider:
+        default_provider = provider
+    else:
+        default_provider = landscape.get("type", "aws")
+    
+    print(f"Generating configuration for cloud provider: {default_provider}")
+    
+    # Determine the Kubernetes version based on environment
+    env = landscape.get("environment", "dev")
+    if env == "staging":
+        k8s_version = "1.29.6"
+    elif env == "production":
+        k8s_version = "1.28.8"
+    else:
+        k8s_version = "1.30.10"
+    
+    # Determine region based on provider and landscape info
+    region = None
+    if default_provider == "aws":
+        region = landscape.get("aws_default_region", "us-east-1")
+        print(f"Using AWS region: {region}")
+    elif default_provider == "azure":
+        region = landscape.get("azure_region", "westeurope")
+        print(f"Using Azure region: {region}")
+    elif default_provider == "gcp":
+        region = landscape.get("gcp_region", "europe-west1")
+        print(f"Using GCP region: {region}")
+    
+    # Determine zones based on provider and landscape info
+    zones_match = []
+    
+    # Only add provider-specific zone configurations
+    if default_provider == "aws":
+        # For AWS
+        if "aws_default_region" in landscape:
+            zones_match.append({
+                "when": "landscape.aws_default_region is defined",
+                "then": [
+                    f"{region}a",
+                    f"{region}b",
+                    f"{region}c"
+                ]
+            })
+            
+        # If we have specific landscape zones for AWS
+        if "aws_landscape_zones" in landscape:
+            aws_zones = []
+            for zone in landscape["aws_landscape_zones"]:
+                aws_zones.append(f"{region}{zone}")
+            
+            # Add these specific zones
+            zones_match.append({
+                "when": "landscape.aws_landscape_zones is defined",
+                "then": aws_zones
+            })
+            
+        # Add default AWS zones as fallback
+        zones_match.append({
+            "default": [
+                f"{region}a",
+                f"{region}b",
+                f"{region}c"
+            ]
+        })
+    
+    elif default_provider == "azure":
+        # For Azure
+        if "azure_zones" in landscape:
+            azure_zones = landscape["azure_zones"]
+            zones_match.append({
+                "when": "landscape.azure_zones is defined",
+                "then": azure_zones
+            })
+            
+        # Add default Azure zones as fallback
+        zones_match.append({
+            "default": [
+                "1",
+                "2",
+                "3"
+            ]
+        })
+    
+    elif default_provider == "gcp":
+        # For GCP
+        if "gcp_zones" in landscape:
+            gcp_zones = landscape["gcp_zones"]
+            zones_match.append({
+                "when": "landscape.gcp_zones is defined",
+                "then": gcp_zones
+            })
+            
+        # Add region-specific zones for GCP
+        if "gcp_region" in landscape:
+            gcp_region = landscape["gcp_region"]
+            zones_match.append({
+                "when": f"landscape.gcp_region = '{gcp_region}'",
+                "then": [
+                    f"{gcp_region}-a",
+                    f"{gcp_region}-b",
+                    f"{gcp_region}-c"
+                ]
+            })
+            
+        # Add default GCP zones as fallback
+        zones_match.append({
+            "default": [
+                f"{region}-a",
+                f"{region}-b",
+                f"{region}-c"
+            ]
+        })
+    else:
+        # Generic fallback for unknown providers
+        zones_match.append({
+            "default": [
+                "zone-1",
+                "zone-2",
+                "zone-3"
+            ]
+        })
+    
+    # Create the configuration descriptor
+    config = {
+        "properties": {
+            "config": {
+                "cluster": {
+                    "name": {
+                        "$metadata": {
+                            "message": "Enter the Gardener shoot cluster name:",
+                            "description": "Cluster name should be simply and easy to remember.It must only be lowercase letters, numbers and hyphens. (example monitoring)",
+
+                            "type": "string"
+                        }
+                    },
+                    "max_creation_time": {
+                        "$metadata": {
+                            "message": "Enter a maximum time in seconds for the cluster to be created:",
+                            "description": "Maximum time in seconds for the cluster to be created.",
+                            "type": "int",
+                            "value": 1800
+                        }
+                    },
+                    "user_email": {
+                        "$metadata": {
+                            "message": "Enter the email of the person that will be responsible for cluster:",
+                            "description": "This email will be displayed in Gardener UI and will receive alerts from Gardener for the cluster.",
+                            "type": "string"
+                        }
+                    },
+                    "provider": {
+                        "$metadata": {
+                            "message": "Select infrastructure provider:",
+                            "description": f"Using {default_provider} from landscape configuration",
+                            "type": "string",
+                            "value": default_provider
+                        }
+                    },
+                    "provider_secret": {
+                        "$metadata": {
+                            "message": "Provider secret binding name:",
+                            "description": "Check in Gardener section SECRETS. Add new or use an existing secret for your provider. SecretBindingName is the name of the a SecretBinding that has a reference to the provider secret.",
+                            "type": "string",
+                            "value": f"{default_provider}-secret-binding"
+                        }
+                    },
+                    "namespace": {
+                        "$metadata": {
+                            "message": "Enter the namespace to deploy the shoot cluster into:",
+                            "description": "Must match an existing namespace in the Gardener project",
+                            "type": "string",
+                            "value": "garden-perftests"
+                        }
+                    },
+                    "region": {
+                        "$metadata": {
+                            "message": "Enter your infrastructure region (e.g. us-east-1):",
+                            "type": "string",
+                            "value": region
+                        }
+                    },
+                    "purpose": {
+                        "$metadata": {
+                            "message": "Select the purpose class for this cluster:",
+                            "description": "Indicates the importance of the cluster.",
+                            "type": "string{}",
+                            "options": [
+                                "evaluation",
+                                "development",
+                                "testing",
+                                "production"
+                            ],
+                            "value": "development"
+                        }
+                    },
+                    "k8s_version": {
+                        "$metadata": {
+                            "message": "Enter the Kubernetes version for this cluster:",
+                            "description": "Valid Kubernetes versions such as 1.24.14, 1.25.8, 1.26.5, etc.",
+                            "type": "string",
+                            "value": k8s_version
+                        }
+                    },
+                    "hibernation_enabled": {
+                        "$metadata": {
+                            "type": "bool",
+                            "message": "Should automatic hibernation of cluster be enabled?",
+                            "description": "The cluster will be hibernated every day at specific time (e.g. 7PM)",
+                            "value": False
+                        }
+                    }
+                },
+                "networking": {
+                    "pods": {
+                        "$metadata": {
+                            "message": "Enter CIDR range for the pod network:",
+                            "description": "Use 10.* ranges for CP Foundation clusters. e.g. 10.96.0.0/11",
+                            "type": "string",
+                            "value": "10.96.0.0/11"
+                        }
+                    },
+                    "services": {
+                        "$metadata": {
+                            "message": "Enter CIDR range for the service network:",
+                            "description": "Use 10.* ranges for CP Foundation clusters. e.g. 10.64.0.0/13",
+                            "type": "string",
+                            "value": "10.64.0.0/13"
+                        }
+                    }
+                },
+                "nodes": {
+                    "worker_groups": {
+                        "$metadata": {
+                            "message": "Define the worker node groups:",
+                            "description": "One or more worker groups for your Gardener Shoot cluster",
+                            "type": "object[]"
+                        },
+                        "name": {
+                            "$metadata": {
+                                "message": "Enter a name for the Worker group:",
+                                "description": "Name must only be lowercase letters, numbers and hyphens maximum 15 characters. (example default)",
+                                "type": "string",
+                                "value": "default"
+                            }
+                        },
+                        "volume_type": {
+                            "$metadata": {
+                                "message": "Enter volume type for the Worker group:",
+                                "description": "Cloud-specific volume types",
+                                "type": "string{}",
+                                "options": get_volume_type_options(default_provider),
+                                "value": get_default_volume_type(default_provider)
+                            }
+                        },
+                        "volume_size": {
+                            "$metadata": {
+                                "message": "Enter volume size for the Worker group:",
+                                "description": "Volume size with unit (e.g. 50Gi)",
+                                "type": "string",
+                                "value": "50Gi"
+                            }
+                        },
+                        "volume_encrypted": {
+                            "$metadata": {
+                                "message": "Should cloud provider volume encryption be used?",
+                                "description": "Usage of cloud provider volume encryption (currently only supported for worker volumes on AWS, otherwise the setting is ignored).",
+                                "type": "bool",
+                                "value": True
+                            }
+                        },
+                        "min_count": {
+                            "$metadata": {
+                                "message": "Enter a minimum for the Autoscaler:",
+                                "description": "Minimum number of VMs to be created, e.g. 1",
+                                "type": "int",
+                                "value": 1
+                            }
+                        },
+                        "max_count": {
+                            "$metadata": {
+                                "message": "Enter a maximum for the Autoscaler:",
+                                "description": "Maximum number of VMs to be created, e.g. 3",
+                                "type": "int",
+                                "value": 3
+                            }
+                        },
+                        "max_surge": {
+                            "$metadata": {
+                                "message": "Max surge value for rolling updates:",
+                                "type": "int",
+                                "value": 1
+                            }
+                        },
+                        "zones": {
+                            "$metadata": {
+                                "message": "Enter the availability zones:",
+                                "description": "Zone names vary per cloud provider",
+                                "type": "string[]",
+                                "$match": zones_match
+                            }
+                        },
+                        "machine_type": {
+                            "$metadata": {
+                                "message": "Enter machine type for the Worker group:",
+                                "description": "Cloud-specific VM types",
+                                "type": "string{}",
+                                "options": get_machine_type_options(default_provider),
+                                "value": get_default_machine_type(default_provider)
+                            }
+                        },
+                        "image_name": {
+                            "$metadata": {
+                                "message": "Enter machine image for the Worker group:",
+                                "type": "string{}",
+                                "options": [
+                                    "gardenlinux",
+                                    "ubuntu",
+                                    "suse-chost",
+                                    "memoryone-chost",
+                                    "coreos"
+                                ],
+                                "value": "gardenlinux"
+                            }
+                        },
+                        "image_version": {
+                            "$metadata": {
+                                "message": "Enter machine image version for the Worker group:",
+                                "description": "If it's left empty, the value is set by gardener to the latest one.",
+                                "type": "string",
+                                "value": "1592.9.0"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    # If cluster name is provided, set it as the default value
+    if cluster_name:
+        config["properties"]["config"]["cluster"]["name"]["$metadata"]["value"] = cluster_name
+    
+    return config
+
+
+def save_config(config: Dict[str, Any], filename: str) -> None:
+    """Save the configuration to a YAML file"""
+    
+    # Create directory if it doesn't exist
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    
+    # Custom YAML representer to handle undefined tags
+    def represent_undefined(dumper, data):
+        return dumper.represent_scalar('tag:yaml.org,2002:str', str(data))
+    
+    # Register the custom representer
+    yaml.add_representer(type(None), represent_undefined)
+    
+    with open(filename, 'w') as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+
+def main():
+    """Main function"""
+    parser = argparse.ArgumentParser(description='Generate Gardener cluster configuration descriptor')
+    parser.add_argument('context_file', help='IAC context file')
+    parser.add_argument('--cluster-name', default='monitoring', help='Default cluster name')
+    parser.add_argument('--provider', choices=['aws', 'azure', 'gcp'], help='Default cloud provider')
+    
+    args = parser.parse_args()
+    
+    # Get IAC component directory from environment
+    iac_component_dir = os.environ.get('IAC_COMPONENT_DIR')
+    if not iac_component_dir:
+        print("Error: IAC_COMPONENT_DIR environment variable is not set. Exiting.")
+        sys.exit(1)
+        
+    # Set the output path to the required location
+    config_dir = os.path.join(iac_component_dir, 'config')
+    output_path = os.path.join(config_dir, 'config-descriptor.yml')
+    
+    # Backup existing config file if it exists
+    backup_existing_config(output_path)
+    
+    # Generate and save the configuration using context file
+    config = generate_config_descriptor(args.context_file, args.cluster_name, args.provider)
+    save_config(config, output_path)
+    
+    print(f"Generated new config descriptor at: {output_path}")
+
+
+if __name__ == "__main__":
+    main()

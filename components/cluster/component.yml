@@ -1,0 +1,6 @@
+service-inventory-key: cluster
+lifecycles:
+  deploy:
+    - deploy
+  test:
+    - test

@@ -1,0 +1,10 @@
+manifest: manifest.yml
+service-inventory-key: GARDENER-CLUSTER
+lifecycles:
+  deploy:
+  - prepare
+  - write_manifest
+  - deploy
+  destroy:
+  - write_manifest
+  - destroy

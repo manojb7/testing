@@ -1,0 +1,10 @@
+helm:
+  - artifact: config-chart
+    namespace: namespace.yml
+    values:
+      - config-chart-values.yml
+  - artifact: nginx-chart
+    namespace: namespace.yml
+    values:
+      - nginx-values.yml
+      - common-values.yml

@@ -1,0 +1,14 @@
+---
+config: (( &temporary ( merge ) ))
+credentials: (( &temporary ( exec( "lscrypt", "read", "-d", .context.imports.meta.deployment.name, "credentials.yml").credentials ) ))
+imports: (( &temporary ( merge ) ))
+landscape: (( &temporary ( merge )))
+
+context:
+  config: (( .config ))
+  landscape: (( .landscape ))
+  credentials: (( .credentials ))
+  imports: (( .imports ))
+  vm_name: vmmon
+  gardener_namespace: garden-perftests
+  shoot_yaml_name: shoot.yml

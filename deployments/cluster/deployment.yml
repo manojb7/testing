@@ -1,0 +1,9 @@
+component: cluster
+
+requires:
+  - iaas_provider: iaas-provider
+
+context:
+- context-template.yml
+- config.yml
+- landscape.yml

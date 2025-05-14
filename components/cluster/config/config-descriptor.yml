@@ -1,0 +1,133 @@
+properties:
+  config:
+    cluster:
+      max_creation_time:
+        $metadata:
+          message: "Enter a maximum time in seconds for the cluster to be created:"
+          description: Maximum maximum time in seconds for the cluster to be created.
+          type: int
+          value: 1800
+      cluster_name:
+        $metadata:
+          message: "Enter the name of the cluster:"
+          description: Cluster name should be maximum 10 characters. It must only be lowercase letters, numbers and hyphens. (example cfdev1)
+          type: string
+      user_email:
+        $metadata:
+          message: "Enter the email of the person that will be responsible for cluster:"
+          description: This email will be displayed in Gardener UI and will receive alerts from Gardener for the cluster.
+          type: string
+      provider_type:
+        $metadata:
+          message: "Select infrastructure provider:"
+          type: string
+          options:
+          - aws
+          - alicloud
+          - azure
+          - gcp
+      provider_secret:
+        $metadata:
+          message: "Provider secret binding name:"
+          description: Check in Gardener section SECRETS. Add new or use an existing secret for your provider. SecretBindingName is the name of the a SecretBinding that has a reference to the provider secret.
+          type: string
+      region:
+        $metadata:
+          message: "Enter your infrastructure region (e.g. eu-central-1):"
+          type: string
+      zone:
+        $metadata:
+          message: "Enter your infrastructure worker zone (e.g. eu-central-1a):"
+          type: string
+      purpose:
+        $metadata:
+          message: "Select the purpose class for this cluster:"
+          description: Indicates the importance of the cluster.
+          type: string
+          options:
+          - evaluation
+          - development
+          - testing
+          - production
+          value: development
+      k8s_version:
+        $metadata:
+          message: "Enter the Kubernetes version for this cluster:"
+          description: Valid Kubernetes versions are 1.16.14, 1.17.8, 1.18.5, etc.
+          type: string
+          value: "1.20.11"
+      worker_group_name:
+        $metadata:
+          message: "Enter a name for the Worker group:"
+          description: Name must only be lowercase letters, numbers and hyphens maximum 15 characters. (example default)
+          type: string
+          value: default
+      machine_type:
+        $metadata:
+          message: "Enter machine type for the Worker group:"
+          description: Machine type examples are m5.large, m5.xlarge, m5.2xlarge
+          type: string
+          value: m5.large
+      image_name:
+        $metadata:
+          message: "Enter machine image for the Worker group:"
+          type: string
+          options:
+          - gardenlinux
+          - ubuntu
+          - suse-chost
+          - memoryone-chost
+          - coreos
+          value: gardenlinux
+      image_version:
+        $metadata:
+          message: "Enter machine image version for the Worker group"
+          description: If it's left empty, the value is set by gardener.
+          type: string
+          value: "" # When version is not provided Gardener is defaulting it to the latest one
+      volume_type:
+        $metadata:
+          message: "Enter volume type for the Worker group(e.g. gp2, io1):"
+          type: string
+          value: gp2
+      volume_size:
+        $metadata:
+          message: "Enter volume size for the Worker group(e.g. 50Gi)"
+          type: string
+          value: 50Gi
+      volume_encrypted:
+        $metadata:
+          message: "Should cloud provider volume encryption be used?"
+          description: Usage  cloud provider volume encryption (currently only supported for worker volumes on AWS, otherwise the setting is ignored).
+          type: bool
+          value: true
+      autoscaler_min:
+        $metadata:
+          message: "Enter a minimum for the Autoscaler:"
+          description: Minimum number of VMs to be created, e.g. 1
+          type: int
+          value: 1
+      autoscaler_max:
+        $metadata:
+          message: "Enter a maximum for the Autoscaler:"
+          description: Maximum number of VMs to be created, e.g. 3
+          type: int
+          value: 3
+      hibernation_enabled:
+        $metadata:
+          type: bool
+          message: Should automatic hibernation of cluster be enabled?
+          description: The cluster will be hibernated every day at specific time (e.g. 7PM)
+          value: true
+      pods_cidr:
+        $metadata:
+          type: string
+          message: "Enter CIDR range for the pod network:"
+          description: Use 10.* ranges for CP Foundation clusters. e.g. 10.96.0.0/11
+          value: 10.96.0.0/11
+      services_cidr:
+        $metadata:
+          type: string
+          message: "Enter CIDR range for the services network:"
+          description: Use 10.* ranges for CP Foundation clusters. e.g. 10.64.0.0/13
+          value: 10.64.0.0/13

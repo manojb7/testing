@@ -1,0 +1,15 @@
+#When we integrate sso for dashboarding
+---
+landscape: (( &temporary ( merge ) ))
+imports: (( &temporary ( merge ) ))
+
+
+uaa_clients:
+- authorized_grant_types: authorization_code,refresh_token
+  client_id: monitoring
+  scope: openid
+  autoapprove: true
+  secret: ((!uaa_monitoring_client_secret))
+  redirect_uri:
+    - (( "https://monitoring.domain" .imports.cf.sys_domain || ~  ))
+    - (( "https://monitoring2.domain" .imports.cf.sys_domain || ~  ))

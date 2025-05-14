@@ -1,0 +1,6 @@
+---
+manifest: manifest.yml
+service-inventory-key: SERVICE-163
+lifecycles:
+  deploy:
+  - deploy

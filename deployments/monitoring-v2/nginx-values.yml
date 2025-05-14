@@ -1,0 +1,6 @@
+context: (( &temporary ( merge ) ))
+
+image:
+  registry: (( .context.imports.meta.repositories.image.host ))
+  repository: (( .context.imports.meta.artifacts.image.nginx-image.image ))
+  tag: (( .context.imports.meta.artifacts.image.nginx-image.tag ))

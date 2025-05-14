@@ -1,0 +1,8 @@
+cluster:
+  credentials:
+    files: {}
+    properties:
+      credentials:
+        serviceaccount:
+          kubeconfig: |+
+          << ADD KUBECONFIG HERE >>

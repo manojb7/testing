@@ -1,0 +1,11 @@
+properties:
+  config:
+    avs:
+      endpoint:
+        hidden: true
+        message: Enter the Availability Service (AvS) REST endpoint
+        description: >
+              This URL denotes an Availability Service or the Health Proxy endpoint where
+              availability monitor updates are sent to. It must contain a trailing '/'.
+        type: string
+        value: ~

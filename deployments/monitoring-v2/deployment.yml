@@ -1,0 +1,10 @@
+component: monitoring-v2
+contextGenerationVersion: 2 
+
+requires:
+  - cluster
+
+context:
+  - context-template.yml
+  - config.yml
+  - landscape.yml

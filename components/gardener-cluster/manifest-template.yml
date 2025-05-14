@@ -1,0 +1,13 @@
+---
+apiVersion: core.gardener.cloud/v1beta1
+kind: Shoot
+metadata:
+  name: (( .context.config.gardener-cluster.cluster_name ))
+  namespace: (( .context.config.gardener-cluster.namespace ))
+spec:
+  purpose: (( .context.config.gardener-cluster.purpose ))
+  provider:
+    type: (( .context.config.gardener-cluster.provider_type ))
+    region: (( valid(.context.imports.iaas_provider.credentials.region) ? .context.imports.iaas_provider.credentials.region : "fallback-region" ))
+    infrastructureConfig:
+      zones: (( .context.config.gardener-cluster.zones ))
