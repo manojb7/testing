@@ -81,15 +81,29 @@ properties:
         $metadata:
           message: 'Select the Kubernetes version for this cluster:'
           description: Choose a supported Kubernetes version for your Gardener shoot cluster
-          type: string{1}
-          options:
-            - 1.32.2
-            - 1.31.7
-          $infra_default:
-            $staging: 1.32.2
-            $canary: 1.31.7
-            $hotfix: 1.31.7
-            $live: 1.31.7
+          type: string
+          value:
+            $match:
+              - when: landscape.environment = 'staging'
+                then: 1.32.2
+              - when: landscape.environment = 'canary'
+                then: 1.31.7
+              - when: landscape.environment = 'hotfix'
+                then: 1.31.7
+              - when: landscape.environment = 'live'
+                then: 1.31.7
+      provider_secret:
+        $metadata:
+          message: 'Provider secret binding name:'
+          description: Check in Gardener section SECRETS. Add new or use an existing
+            secret for your provider. SecretBindingName is the name of the a SecretBinding
+            that has a reference to the provider secret.
+          type: string
+          value:
+            $aws: aws-secret-binding
+            $gcp: gcp-secret-binding
+            $azure: azure-secret-binding
+
       project_name:
         $metadata:
           message: Enter the Gardener project that the cluster belongs to
