@@ -1,133 +1,522 @@
+---
 properties:
   config:
+    cluster_auditlog:
+      enabled:
+        $metadata:
+          message: Should cluster's Auditlog be enabled?
+          description: If true, the cluster auditlog will be enabled, as long as it is available on the landscape
+          type: bool
+          value: true
+    aws_account_id:
+      $metadata:
+        infrastructure:
+          - $aws
+        message: Enter AWS account ID
+        description: ID of the AWS account used for provisioning infrastructure
+        type: string
+    aws_region:
+      $metadata:
+        infrastructure:
+          - $aws
+        message: Enter AWS region
+        description: AWS region identifier for the landscape
+        type: string
+        value: ${{cpc.ExecuteExternalCommand(iac -d iaas-provider get-config -p config.aws_region)}}
+    azure_subscription_id:
+      $metadata:
+        infrastructure:
+          - $azure
+        message: Enter the ID of the subscription
+        description: ID of the Subscription being used for provisioning
+        type: string
+    azure_region:
+      $metadata:
+        infrastructure:
+          - $azure
+        message: Enter the Azure landscape region
+        description: Region for the azure landscape
+        type: string
+        value: ${{cpc.ExecuteExternalCommand(iac -d iaas-provider get-config -p config.azure_region)}}
+    gcp_project_id:
+      $metadata:
+        infrastructure:
+          - $gcp
+        message: Enter the GCP project ID (the project ID is not the same as the project number)
+        description: Name of the GCP project used for provisioning
+        type: string
+    gcp_region:
+      $metadata:
+        infrastructure:
+          - $gcp
+        message: Enter the GCP landscape region
+        type: string
+        value: ${{cpc.ExecuteExternalCommand(iac -d iaas-provider get-config -p config.gcp_region)}}
+    service_account_name:
+      $metadata:
+        message: What is the name of the service account to be used for this deployment?
+        description: The name of the service account on the Landscaper resource cluster to be used for the current deployment.
+        type: string
+        value: robot-monika
     cluster:
+      name:
+        $metadata:
+          message: 'Enter the Gardener shoot cluster name:'
+          description: Cluster name should be simply and easy to remember. It must only be lowercase letters, numbers and hyphens.
+          type: string
+          value: monitoring-cluster
       max_creation_time:
         $metadata:
-          message: "Enter a maximum time in seconds for the cluster to be created:"
-          description: Maximum maximum time in seconds for the cluster to be created.
+          message: 'Enter a maximum time in seconds for the cluster to be created:'
+          description: Maximum time in seconds for the cluster to be created.
           type: int
           value: 1800
-      cluster_name:
-        $metadata:
-          message: "Enter the name of the cluster:"
-          description: Cluster name should be maximum 10 characters. It must only be lowercase letters, numbers and hyphens. (example cfdev1)
-          type: string
       user_email:
         $metadata:
-          message: "Enter the email of the person that will be responsible for cluster:"
+          message: 'Enter the email of the person that will be responsible for cluster:'
           description: This email will be displayed in Gardener UI and will receive alerts from Gardener for the cluster.
           type: string
-      provider_type:
-        $metadata:
-          message: "Select infrastructure provider:"
-          type: string
-          options:
-          - aws
-          - alicloud
-          - azure
-          - gcp
-      provider_secret:
-        $metadata:
-          message: "Provider secret binding name:"
-          description: Check in Gardener section SECRETS. Add new or use an existing secret for your provider. SecretBindingName is the name of the a SecretBinding that has a reference to the provider secret.
-          type: string
-      region:
-        $metadata:
-          message: "Enter your infrastructure region (e.g. eu-central-1):"
-          type: string
-      zone:
-        $metadata:
-          message: "Enter your infrastructure worker zone (e.g. eu-central-1a):"
-          type: string
-      purpose:
-        $metadata:
-          message: "Select the purpose class for this cluster:"
-          description: Indicates the importance of the cluster.
-          type: string
-          options:
-          - evaluation
-          - development
-          - testing
-          - production
-          value: development
+          value: DL_5C067FAB3376E8004EC45FAC@global.corp.sap
       k8s_version:
         $metadata:
-          message: "Enter the Kubernetes version for this cluster:"
-          description: Valid Kubernetes versions are 1.16.14, 1.17.8, 1.18.5, etc.
-          type: string
-          value: "1.20.11"
-      worker_group_name:
-        $metadata:
-          message: "Enter a name for the Worker group:"
-          description: Name must only be lowercase letters, numbers and hyphens maximum 15 characters. (example default)
-          type: string
-          value: default
-      machine_type:
-        $metadata:
-          message: "Enter machine type for the Worker group:"
-          description: Machine type examples are m5.large, m5.xlarge, m5.2xlarge
-          type: string
-          value: m5.large
-      image_name:
-        $metadata:
-          message: "Enter machine image for the Worker group:"
-          type: string
+          message: 'Select the Kubernetes version for this cluster:'
+          description: Choose a supported Kubernetes version for your Gardener shoot cluster
+          type: string{1}
           options:
-          - gardenlinux
-          - ubuntu
-          - suse-chost
-          - memoryone-chost
-          - coreos
-          value: gardenlinux
-      image_version:
+            - 1.32.2
+            - 1.31.7
+          $infra_default:
+            $staging: 1.32.2
+            $canary: 1.31.7
+            $hotfix: 1.31.7
+            $live: 1.31.7
+      project_name:
         $metadata:
-          message: "Enter machine image version for the Worker group"
-          description: If it's left empty, the value is set by gardener.
+          message: Enter the Gardener project that the cluster belongs to
           type: string
-          value: "" # When version is not provided Gardener is defaulting it to the latest one
-      volume_type:
+          value: perftests
+      purpose:
         $metadata:
-          message: "Enter volume type for the Worker group(e.g. gp2, io1):"
+          message: Select the purpose of the Gardener cluster
+          type: string{1}
+          options:
+            - evaluation
+            - development
+            - testing
+            - production
+          value: evaluation
+      cidr:
+        $metadata:
+          message: Enter the IP range in CIDR format for the Gardener cluster's network
+          description: Set this configuration setting to the IPv4 CIDR of the Gardener cluster virtual network
           type: string
-          value: gp2
-      volume_size:
+          infrastructure:
+            - $aws
+            - $azure
+          value:
+            $aws: 10.223.0.0/16
+            $azure: 10.223.0.0/16
+      workers:
         $metadata:
-          message: "Enter volume size for the Worker group(e.g. 50Gi)"
+          message: Enter the IP range in CIDR format for all Gardener cluster's worker nodes
           type: string
-          value: 50Gi
-      volume_encrypted:
+          infrastructure:
+            - $azure
+            - $gcp
+          value:
+            $azure: 10.223.0.0/16
+            $gcp: 10.223.0.0/16
+      aws_zones:
         $metadata:
-          message: "Should cloud provider volume encryption be used?"
-          description: Usage  cloud provider volume encryption (currently only supported for worker volumes on AWS, otherwise the setting is ignored).
+          message: Configuration for resources that will be created or used in the different AWS availability zones
+          infrastructure:
+            - $aws
+          type: object[3]
+          value:
+            - internal: 10.223.24.0/21
+              public: 10.223.16.0/21
+              workers: 10.223.0.0/20
+            - internal: 10.223.56.0/21
+              public: 10.223.48.0/21
+              workers: 10.223.32.0/20
+            - internal: 10.223.88.0/21
+              public: 10.223.80.0/21
+              workers: 10.223.64.0/20
+        internal:
+          $metadata:
+            message: Enter the IP range in CIDR format that will be used for internal load balancers
+            description: Set this configuration setting to the IPv4 CIDR of the Gardener cluster that will be used for internal load balancers
+            type: string
+        public:
+          $metadata:
+            message: Enter the IP range in CIDR format that will be used for public load balancers
+            description: Set this configuration setting to the IPv4 CIDR of the Gardener cluster that will be used for public load balancers
+            type: string
+        workers:
+          $metadata:
+            message: Enter the IP range in CIDR format that will be used for all worker nodes
+            description: Set this configuration setting to the IPv4 CIDR of the Gardener cluster that will be used for all worker nodes
+            type: string
+      zoned:
+        $metadata:
+          message: Enter whether the Azure cluster is multi zone
           type: bool
+          infrastructure:
+            - $azure
           value: true
-      autoscaler_min:
+      kube_controller_manager:
+        horizontal_pod_autoscaler:
+          syncPeriod:
+            $metadata:
+              message: The period for syncing the number of pods in horizontal pod autoscaler.
+              type: string
+              value: 15s
+          tolerance:
+            $metadata:
+              message: The minimum change (from 1.0) in the desired-to-actual metrics ratio for the horizontal pod autoscaler to consider scaling.
+              type: float
+              value: 0.1
+          downscale_stabilization:
+            $metadata:
+              message: The configurable window at which the controller will choose the highest recommendation for autoscaling.
+              type: string
+              value: 5m0s
+          initial_readinessDelay:
+            $metadata:
+              message: The configurable period at which the horizontal pod autoscaler considers a Pod "not yet ready" given that it's unready and it has transitioned to unready during that time.
+              type: string
+              value: 30s
+          cpu_initialization_period:
+            $metadata:
+              message: The period after which a ready pod transition is considered to be the first.
+              type: string
+              value: 5m0s
+      cluster_autoscaler:
+        expander:
+          $metadata:
+            message: Expander defines the algorithm to use during scale up (default least-waste)
+            type: string
+            value: "least-waste"
+        scanInterval:
+          $metadata:
+            message: ScanInterval how often cluster is reevaluated for scale up or down (default 10 secs).
+            type: string
+            value: 10s
+        scaleDownDelayAfterAdd:
+          $metadata:
+            message: ScaleDownDelayAfterAdd defines how long after scale up that scale down evaluation resumes (default 1 hour)
+            type: string
+            value: 60m
+        scaleDownDelayAfterDelete:
+          $metadata:
+            message: ScaleDownDelayAfterDelete how long after node deletion that scale down evaluation resumes, defaults to scanInterval (default 0 secs).
+            type: string
+            value: 0s
+        scaleDownDelayAfterFailure:
+          $metadata:
+            message: ScaleDownDelayAfterFailure how long after scale down failure that scale down evaluation resumes (default 3 mins).
+            type: string
+            value: 3m
+        scaleDownUnneededTime:
+          $metadata:
+            message: ScaleDownUnneededTime defines how long a node should be unneeded before it is eligible for scale down (default 30 mins).
+            type: string
+            value: 30m
+        scaleDownUtilizationThreshold:
+          $metadata:
+            message: ScaleDownUtilizationThreshold defines the threshold in fraction (0.0 - 1.0) under which a node is being removed (default 0.5).
+            type: float
+            value: 0.5
+      static_node_number:
         $metadata:
-          message: "Enter a minimum for the Autoscaler:"
-          description: Minimum number of VMs to be created, e.g. 1
+          message: "Number of nodes allocated for static cluster's resources"
           type: int
-          value: 1
-      autoscaler_max:
-        $metadata:
-          message: "Enter a maximum for the Autoscaler:"
-          description: Maximum number of VMs to be created, e.g. 3
-          type: int
-          value: 3
-      hibernation_enabled:
-        $metadata:
-          type: bool
-          message: Should automatic hibernation of cluster be enabled?
-          description: The cluster will be hibernated every day at specific time (e.g. 7PM)
-          value: true
-      pods_cidr:
-        $metadata:
-          type: string
-          message: "Enter CIDR range for the pod network:"
-          description: Use 10.* ranges for CP Foundation clusters. e.g. 10.96.0.0/11
-          value: 10.96.0.0/11
-      services_cidr:
-        $metadata:
-          type: string
-          message: "Enter CIDR range for the services network:"
-          description: Use 10.* ranges for CP Foundation clusters. e.g. 10.64.0.0/13
-          value: 10.64.0.0/13
+          value: 2
+      # Worker Group for OpenTelemetry (otel)
+      otel_worker_group:
+        minimum:
+          $metadata:
+            message: Enter the minimum number of worker nodes for autoscaling in the otel worker group
+            type: int
+            value: 2
+        maximum:
+          $metadata:
+            message: Enter the maximum number of worker nodes for autoscaling in the otel worker group
+            type: int
+            value: 4
+        maxSurge:
+          $metadata:
+            message: Enter the maximum surge by which the cluster will be autoscaled
+            type: int
+            value: 2
+        maxUnavailable:
+          $metadata:
+            message: Enter the maximum number of unavailable pods during update process
+            type: int
+            value: 1
+        cri:
+          name:
+            $metadata:
+              message: Enter the shoot cluster container runtime
+              type: string
+              value: containerd
+        machine:
+          image:
+            name:
+              $metadata:
+                message: Enter the machine image name to be used for the Gardener cluster
+                type: string
+                value:
+                  $match:
+                    - when: landscape.tags in ('awsgc')
+                      then: ubuntu
+                    - default: gardenlinux
+            version:
+              $metadata:
+                message: Enter the machine image version to be used for the Gardener cluster
+                type: string
+                value:
+                  $match:
+                    - when: landscape.tags in ('awsgc')
+                      then: '20.4.20250311'
+                    - default: '1592.8.0'
+          type:
+            $metadata:
+              message: Enter the instance generation type to be used for the nodes of the otel worker group
+              description: |-
+                This defines the instance type which will be used for provisioning the Kubernetes worker nodes for the OpenTelemetry workloads.
+              type: string
+              value:
+                $match:
+                  - when: landscape.type in ('aws') and landscape.environment = 'staging'
+                    then: 4cpu_8gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'staging'
+                    then: 4cpu_8gb
+                  - when: landscape.type in ('aws') and landscape.environment = 'canary'
+                    then: 8cpu_16gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'canary'
+                    then: 8cpu_16gb
+                  - when: landscape.type in ('aws') and landscape.environment = 'hotfix'
+                    then: 4cpu_8gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'hotfix'
+                    then: 4cpu_8gb
+                  - when: landscape.type in ('aws') and landscape.environment = 'live'
+                    then: 8cpu_16gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'live'
+                    then: 8cpu_16gb
+        volume:
+          type:
+            $metadata:
+              message: Enter the disk volume type to be used for the worker nodes of the otel worker group
+              description: |-
+                This defines the disk volume type which will be used for the volumes to be attached to the Kubernetes worker nodes
+                of the otel worker group.
+              type: string{1}
+              options:
+                - standard
+                - premium
+              value: standard
+          size:
+            $metadata:
+              message: Enter the disk volume size (in GiB) to be used for the worker nodes of the otel worker group
+              description: |-
+                This defines the disk volume size which will be used for the volumes to be attached to the Kubernetes worker nodes
+                of the otel worker group.
+              type: string
+              value:
+                $match:
+                  - when: landscape.tags in ('awsgc')
+                    then: 100Gi
+                  - default: 50Gi
+      # Worker Group for VictoriaMetrics (vm)
+      vm_worker_group:
+        minimum:
+          $metadata:
+            message: Enter the minimum number of worker nodes for autoscaling in the vm worker group
+            type: int
+            value: 3
+        maximum:
+          $metadata:
+            message: Enter the maximum number of worker nodes for autoscaling in the vm worker group
+            type: int
+            value: 6
+        maxSurge:
+          $metadata:
+            message: Enter the maximum surge by which the cluster will be autoscaled
+            type: int
+            value: 3
+        maxUnavailable:
+          $metadata:
+            message: Enter the maximum number of unavailable pods during update process
+            type: int
+            value: 1
+        cri:
+          name:
+            $metadata:
+              message: Enter the shoot cluster container runtime
+              type: string
+              value: containerd
+        machine:
+          image:
+            name:
+              $metadata:
+                message: Enter the machine image name to be used for the Gardener cluster
+                type: string
+                value:
+                  $match:
+                    - when: landscape.tags in ('awsgc')
+                      then: ubuntu
+                    - default: gardenlinux
+            version:
+              $metadata:
+                message: Enter the machine image version to be used for the Gardener cluster
+                type: string
+                value:
+                  $match:
+                    - when: landscape.tags in ('awsgc')
+                      then: '20.4.20250311'
+                    - default: '1592.8.0'
+          type:
+            $metadata:
+              message: Enter the instance generation type to be used for the nodes of the vm worker group
+              description: |-
+                This defines the instance type which will be used for provisioning the Kubernetes worker nodes for the VictoriaMetrics workloads.
+              type: string
+              value:
+                $match:
+                  - when: landscape.type in ('aws') and landscape.environment = 'staging'
+                    then: 8cpu_16gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'staging'
+                    then: 8cpu_16gb
+                  - when: landscape.type in ('aws') and landscape.environment = 'canary'
+                    then: 16cpu_32gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'canary'
+                    then: 16cpu_32gb
+                  - when: landscape.type in ('aws') and landscape.environment = 'hotfix'
+                    then: 8cpu_16gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'hotfix'
+                    then: 8cpu_16gb
+                  - when: landscape.type in ('aws') and landscape.environment = 'live'
+                    then: 16cpu_32gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'live'
+                    then: 16cpu_32gb
+        volume:
+          type:
+            $metadata:
+              message: Enter the disk volume type to be used for the worker nodes of the vm worker group
+              description: |-
+                This defines the disk volume type which will be used for the volumes to be attached to the Kubernetes worker nodes
+                of the vm worker group.
+              type: string{1}
+              options:
+                - standard
+                - premium
+              value: standard
+          size:
+            $metadata:
+              message: Enter the disk volume size (in GiB) to be used for the worker nodes of the vm worker group
+              description: |-
+                This defines the disk volume size which will be used for the volumes to be attached to the Kubernetes worker nodes
+                of the vm worker group.
+              type: string
+              value:
+                $match:
+                  - when: landscape.tags in ('awsgc')
+                    then: 100Gi
+                  - default: 100Gi
+      # Worker Group for Plutono (plutono)
+      plutono_worker_group:
+        minimum:
+          $metadata:
+            message: Enter the minimum number of worker nodes for autoscaling in the plutono worker group
+            type: int
+            value: 2
+        maximum:
+          $metadata:
+            message: Enter the maximum number of worker nodes for autoscaling in the plutono worker group
+            type: int
+            value: 4
+        maxSurge:
+          $metadata:
+            message: Enter the maximum surge by which the cluster will be autoscaled
+            type: int
+            value: 2
+        maxUnavailable:
+          $metadata:
+            message: Enter the maximum number of unavailable pods during update process
+            type: int
+            value: 1
+        cri:
+          name:
+            $metadata:
+              message: Enter the shoot cluster container runtime
+              type: string
+              value: containerd
+        machine:
+          image:
+            name:
+              $metadata:
+                message: Enter the machine image name to be used for the Gardener cluster
+                type: string
+                value:
+                  $match:
+                    - when: landscape.tags in ('awsgc')
+                      then: ubuntu
+                    - default: gardenlinux
+            version:
+              $metadata:
+                message: Enter the machine image version to be used for the Gardener cluster
+                type: string
+                value:
+                  $match:
+                    - when: landscape.tags in ('awsgc')
+                      then: '20.4.20250311'
+                    - default: '1592.8.0'
+          type:
+            $metadata:
+              message: Enter the instance generation type to be used for the nodes of the plutono worker group
+              description: |-
+                This defines the instance type which will be used for provisioning the Kubernetes worker nodes for the Plutono workloads.
+              type: string
+              value:
+                $match:
+                  - when: landscape.type in ('aws') and landscape.environment = 'staging'
+                    then: 4cpu_8gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'staging'
+                    then: 4cpu_8gb
+                  - when: landscape.type in ('aws') and landscape.environment = 'canary'
+                    then: 8cpu_16gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'canary'
+                    then: 8cpu_16gb
+                  - when: landscape.type in ('aws') and landscape.environment = 'hotfix'
+                    then: 4cpu_8gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'hotfix'
+                    then: 4cpu_8gb
+                  - when: landscape.type in ('aws') and landscape.environment = 'live'
+                    then: 8cpu_16gb_network
+                  - when: landscape.type not in ('aws') and landscape.environment = 'live'
+                    then: 8cpu_16gb
+        volume:
+          type:
+            $metadata:
+              message: Enter the disk volume type to be used for the worker nodes of the plutono worker group
+              description: |-
+                This defines the disk volume type which will be used for the volumes to be attached to the Kubernetes worker nodes
+                of the plutono worker group.
+              type: string{1}
+              options:
+                - standard
+                - premium
+              value: standard
+          size:
+            $metadata:
+              message: Enter the disk volume size (in GiB) to be used for the worker nodes of the plutono worker group
+              description: |-
+                This defines the disk volume size which will be used for the volumes to be attached to the Kubernetes worker nodes
+                of the plutono worker group.
+              type: string
+              value:
+                $match:
+                  - when: landscape.tags in ('awsgc')
+                    then: 100Gi
+                  - default: 40Gi
