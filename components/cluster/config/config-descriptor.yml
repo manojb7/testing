@@ -100,9 +100,9 @@ properties:
             that has a reference to the provider secret.
           type: string
           value:
-            $aws: aws-secret-binding
-            $gcp: gcp-secret-binding
-            $azure: azure-secret-binding
+            $aws: gardener-secret
+            $gcp: my-gcp-secret
+            $azure: azure-perf-gardener
 
       project_name:
         $metadata:
