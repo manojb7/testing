@@ -1,6 +1,10 @@
+manifest: manifest.yaml
 service-inventory-key: cluster
 lifecycles:
   deploy:
+    - prepare
+    - generate_shoot_manifest
     - deploy
-  test:
-    - test
+  destroy:
+    - prepare
+    - destroy
