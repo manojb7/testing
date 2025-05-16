@@ -16,61 +16,95 @@ spec:
   provider:
     type: (( .context.config.cluster.provider_type ))
 
-    controlPlaneConfig: (( &template
-      (( if eq .context.config.cluster.provider_type "aws" ))
-      {
-        "apiVersion": "aws.provider.extensions.gardener.cloud/v1alpha1",
-        "kind": "ControlPlaneConfig",
-        "cloudControllerManager": {
-          "useCustomRouteController": true
-        },
-        "storage": {
-          "managedDefaultClass": true
-        }
-      }
-      (( else if eq .context.config.cluster.provider_type "azure" ))
-      {
-        "apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1",
-        "kind": "ControlPlaneConfig"
-      }
-      (( else if eq .context.config.cluster.provider_type "gcp" ))
-      {
-        "apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1",
-        "kind": "ControlPlaneConfig"
-      }
-      (( end ))
-    ))
+    controlPlaneConfig: (( if eq .context.config.cluster.provider_type "aws" )) {
+      apiVersion: aws.provider.extensions.gardener.cloud/v1alpha1
+      kind: ControlPlaneConfig
+      cloudControllerManager:
+        useCustomRouteController: true
+      storage:
+        managedDefaultClass: true
+    } (( else if eq .context.config.cluster.provider_type "azure" )) {
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: ControlPlaneConfig
+    } (( else if eq .context.config.cluster.provider_type "gcp" )) {
+      apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+      kind: ControlPlaneConfig
+    } (( end ))
 
-    infrastructureConfig: (( &template
-      (( if eq .context.config.cluster.provider_type "aws" ))
-      {
-        "apiVersion": "aws.provider.extensions.gardener.cloud/v1alpha1",
-        "kind": "InfrastructureConfig",
-        "networks": {
-          "vpc": {
-            "cidr": "10.180.0.0/16"
-          },
-          "zones": (( .context.imports.iaas_provider.aws.zones ))
-        }
-      }
-      (( else if eq .context.config.cluster.provider_type "azure" ))
-      {
-        "apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1",
-        "kind": "InfrastructureConfig",
-        "networks": {
-          "workers": "10.250.0.0/16"
-        }
-      }
-      (( else if eq .context.config.cluster.provider_type "gcp" ))
-      {
-        "apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1",
-        "kind": "InfrastructureConfig",
-        "networks": {
-          "workers": "10.250.0.0/16"
-        }
-      }
-      (( end ))
-    ))
+
+    # controlPlaneConfig: (( &template
+    #   (( if eq .context.config.cluster.provider_type "aws" ))
+    #   {
+    #     "apiVersion": "aws.provider.extensions.gardener.cloud/v1alpha1",
+    #     "kind": "ControlPlaneConfig",
+    #     "cloudControllerManager": {
+    #       "useCustomRouteController": true
+    #     },
+    #     "storage": {
+    #       "managedDefaultClass": true
+    #     }
+    #   }
+    #   (( else if eq .context.config.cluster.provider_type "azure" ))
+    #   {
+    #     "apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1",
+    #     "kind": "ControlPlaneConfig"
+    #   }
+    #   (( else if eq .context.config.cluster.provider_type "gcp" ))
+    #   {
+    #     "apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1",
+    #     "kind": "ControlPlaneConfig"
+    #   }
+    #   (( end ))
+    # ))
+
+    infrastructureConfig: (( if eq .context.config.cluster.provider_type "aws" )) {
+      apiVersion: aws.provider.extensions.gardener.cloud/v1alpha1
+      kind: InfrastructureConfig
+      networks:
+        vpc:
+          cidr: 10.180.0.0/16
+        zones: (( .context.imports.iaas_provider.landscape.region_zones_list ))
+    } (( else if eq .context.config.cluster.provider_type "azure" )) {
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: InfrastructureConfig
+      networks:
+        workers: 10.250.0.0/16
+    } (( else if eq .context.config.cluster.provider_type "gcp" )) {
+      apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
+      kind: InfrastructureConfig
+      networks:
+        workers: 10.250.0.0/16
+    } (( end ))
+
+    # infrastructureConfig: (( if eq .context.config.cluster.provider_type "aws" ))
+    #   {
+    #     "apiVersion": "aws.provider.extensions.gardener.cloud/v1alpha1",
+    #     "kind": "InfrastructureConfig",
+    #     "networks": {
+    #       "vpc": {
+    #         "cidr": "10.180.0.0/16"
+    #       },
+    #       "zones": (( .context.imports.iaas_provider.aws.zones ))
+    #     }
+    #   }
+    #   (( else if eq .context.config.cluster.provider_type "azure" ))
+    #   {
+    #     "apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1",
+    #     "kind": "InfrastructureConfig",
+    #     "networks": {
+    #       "workers": "10.250.0.0/16"
+    #     }
+    #   }
+    #   (( else if eq .context.config.cluster.provider_type "gcp" ))
+    #   {
+    #     "apiVersion": "gcp.provider.extensions.gardener.cloud/v1alpha1",
+    #     "kind": "InfrastructureConfig",
+    #     "networks": {
+    #       "workers": "10.250.0.0/16"
+    #     }
+    #   }
+    #   (( end ))
+    # ))
 
     workers:
       - name: (( .context.config.cluster.worker_group_name ))
