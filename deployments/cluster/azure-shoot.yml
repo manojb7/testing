@@ -8,12 +8,12 @@ metadata:
 spec:
   secretBindingName: (( .context.config.cluster.provider_secret ))
   cloudProfile:
-    name: azure
+    name: az
   region: (( .context.imports.iaas_provider.landscape.region ))
   purpose: (( .context.config.cluster.purpose ))
   provider:
     type: azure
-    
+
     # Provider-specific controlPlaneConfig
     controlPlaneConfig:
       apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
@@ -31,15 +31,15 @@ spec:
       networks:
         vnet:
           cidr: (( .context.config.cluster.cidr ))
-        workers: (( .context.config.cluster.cidr ))
-      zoned: true
+        workers: (( .context.config.cluster.workers ))
+      zoned: (( .context.config.cluster.zoned ))
 
     # Workers configuration
     workers:
       - cri: (( .context.config.cluster.vm_worker_group.cri ))
         name: vmetrics
         machine:
-          type: (( .context.config.cluster.vm_worker_group.machine.type ))
+          type: Standard_D8s_v3
           image:
             name: (( .context.config.cluster.vm_worker_group.machine.image.name ))
             version: (( .context.config.cluster.vm_worker_group.machine.image.version ))
@@ -52,16 +52,16 @@ spec:
           type: Standard_LRS
           size: (( .context.config.cluster.vm_worker_group.volume.size ))
         zones:
-          - (( .context.imports.iaas_provider.landscape.region_zones_list.0 ))
-          - (( .context.imports.iaas_provider.landscape.region_zones_list.1 ))
-          - (( .context.imports.iaas_provider.landscape.region_zones_list.2 ))
+          - "1"
+          - "2"
+          - "3"
         systemComponents:
           allow: true
         updateStrategy: AutoRollingUpdate
       - cri: (( .context.config.cluster.otel_worker_group.cri ))
         name: otel-col
         machine:
-          type: (( .context.config.cluster.otel_worker_group.machine.type ))
+          type: Standard_D4s_v3
           image:
             name: (( .context.config.cluster.otel_worker_group.machine.image.name ))
             version: (( .context.config.cluster.otel_worker_group.machine.image.version ))
@@ -74,16 +74,16 @@ spec:
           type: Standard_LRS
           size: (( .context.config.cluster.otel_worker_group.volume.size ))
         zones:
-          - (( .context.imports.iaas_provider.landscape.region_zones_list.1 ))
-          - (( .context.imports.iaas_provider.landscape.region_zones_list.2 ))
-          - (( .context.imports.iaas_provider.landscape.region_zones_list.0 ))
+          - "2"
+          - "3"
+          - "1"
         systemComponents:
           allow: true
         updateStrategy: AutoRollingUpdate
       - cri: (( .context.config.cluster.plutono_worker_group.cri ))
         name: generic
         machine:
-          type: (( .context.config.cluster.plutono_worker_group.machine.type ))
+          type: Standard_D4s_v3
           image:
             name: (( .context.config.cluster.plutono_worker_group.machine.image.name ))
             version: (( .context.config.cluster.plutono_worker_group.machine.image.version ))
@@ -96,9 +96,9 @@ spec:
           type: Standard_LRS
           size: (( .context.config.cluster.plutono_worker_group.volume.size ))
         zones:
-          - (( .context.imports.iaas_provider.landscape.region_zones_list.2 ))
-          - (( .context.imports.iaas_provider.landscape.region_zones_list.1 ))
-          - (( .context.imports.iaas_provider.landscape.region_zones_list.0 ))
+          - "3"
+          - "2"
+          - "1"
         systemComponents:
           allow: true
         updateStrategy: AutoRollingUpdate
