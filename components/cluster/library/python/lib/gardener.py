@@ -1,5 +1,7 @@
 import base64
 import json
+import os
+import shutil
 import time
 
 import yaml
@@ -23,6 +25,36 @@ class GardenerHelper:
         config.load_kube_config(config_file=self.kubeconfig_path)
         self.custom_api = client.CustomObjectsApi()
 
+        # Directory containing the templates
+        self.template_dir = os.path.dirname(os.path.abspath(__file__)) + "/../deployments/cluster/templates"
+
+    def determine_cloud_provider(self):
+        """
+        Determine the cloud provider from the context.
+
+        :return: The cloud provider type (aws, azure, gcp, etc.)
+        """
+        # Check if a provider-specific context file exists and try to detect provider
+        ctx_path = os.path.dirname(os.path.abspath(__file__)) + "/../deployments/cluster/gen/ctx.yml"
+
+        if os.path.exists(ctx_path):
+            try:
+                with open(ctx_path, 'r') as f:
+                    ctx_data = yaml.safe_load(f)
+
+                # Try to determine provider from context structure
+                if 'context' in ctx_data and 'imports' in ctx_data['context'] and 'iaas_provider' in ctx_data['context']['imports']:
+                    provider_data = ctx_data['context']['imports']['iaas_provider']
+
+                    if 'landscape' in provider_data and 'type' in provider_data['landscape']:
+                        return provider_data['landscape']['type']
+            except Exception as e:
+                print(f"Error reading context file: {e}")
+
+        # Default to AWS if can't determine
+        print("Could not determine cloud provider, defaulting to AWS")
+        return 'aws'
+
     def safe_call_with_retries(self, func, max_retries=3, interval=10):
         """
         Safely call a function with retries.
@@ -34,24 +66,60 @@ class GardenerHelper:
         retries = 0
         while retries < max_retries:
             try:
-            return func()
+                return func()
             except Exception as e:
-            print(f"Error occurred: {e}")
-            retries += 1
-            time.sleep(interval)
+                print(f"Error occurred: {e}")
+                retries += 1
+                time.sleep(interval)
         raise Exception("Max retries exceeded. Aborting operation.")
+
+    def select_shoot_template(self):
+        """
+        Select the appropriate shoot template based on the cloud provider.
+
+        :return: Path to the selected template
+        """
+        # Determine the cloud provider
+        provider_type = self.determine_cloud_provider()
+
+        # Get the template paths
+        templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "deployments", "cluster", "templates")
+        template_path = os.path.join(templates_dir, f"shoot-{provider_type}.yml")
+
+        # Check if the template exists
+        if not os.path.exists(template_path):
+            print(f"Template for provider '{provider_type}' not found at {template_path}")
+            print(f"Using default AWS template")
+            template_path = os.path.join(templates_dir, "shoot-aws.yml")
+
+            # If even the default template doesn't exist, raise an error
+            if not os.path.exists(template_path):
+                raise FileNotFoundError(f"Cannot find default AWS template at {template_path}")
+
+        # Copy the template to shoot.yml in the cluster deployment directory
+        shoot_yml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "deployments", "cluster", "shoot.yml")
+        shutil.copy2(template_path, shoot_yml_path)
+
+        print(f"Selected and copied template for '{provider_type}' provider to shoot.yml")
+        return shoot_yml_path
 
     def create_shoot(self, template_file_path=None, template_string=None):
         """
         Create a shoot resource from a YAML template.
 
         Either provide a path to a template file or a YAML string.
+        If no template is provided, it will automatically select the appropriate
+        template based on the cloud provider.
 
         :param template_file_path: Path to the shoot template YAML file.
         :param template_string: A string containing the shoot template in YAML format.
         :return: The created shoot resource object.
         :raises: ValueError if neither a file path nor a string is provided.
         """
+        if not template_string and not template_file_path:
+            # Select the appropriate template based on cloud provider
+            template_file_path = self.select_shoot_template()
+
         if template_string:
             shoot_template = yaml.safe_load(template_string)
         elif template_file_path:
@@ -292,32 +360,26 @@ if __name__ == "__main__":
     kubeconfig = "./robot-kubeconfig.yml"
     namespace = "garden-perftests"
     shoot_name = "monika-vm"
-    template_file = "./shoot-template.yml"
 
-    # Create an instance of GardenerHelper.
     gardener = GardenerHelper(kubeconfig, namespace, shoot_name)
 
-    # Create the shoot.
-    gardener.create_shoot(template_file_path=template_file)
+    # This will automatically select the appropriate template based on cloud provider
+    gardener.create_shoot()
     creation_status = gardener.poll_shoot_status(timeout=300, interval=10)
     print("Shoot creation status:", creation_status)
 
-    # Check if the shoot exists.
     exists = gardener.shoot_exists()
     print("Does shoot exist?", exists)
 
-    # Check the health of the shoot.
     health = gardener.check_shoot_health()
     print("Shoot health:", health)
 
-    # Retrieve the shoot kubeconfig and create a shoot API client.
     kubeconfig_str, shoot_api_client = gardener.get_shoot_kubeconfig(
         expiration_seconds=600
     )
     print("Retrieved shoot kubeconfig:")
     print(kubeconfig_str)
 
-    # Delete the shoot.
     gardener.delete_shoot()
     deletion_status = gardener.poll_shoot_deletion_status(timeout=300, interval=10)
     print("Shoot deletion status:", deletion_status)
