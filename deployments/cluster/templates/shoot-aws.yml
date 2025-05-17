@@ -1,0 +1,158 @@
+context: (( &temporary ( merge ) ))
+
+apiVersion: core.gardener.cloud/v1beta1
+kind: Shoot
+metadata:
+  name: (( .context.config.cluster.name ))
+  namespace: (( .context.gardener_namespace ))
+spec:
+  secretBindingName: (( .context.config.cluster.provider_secret ))
+  cloudProfile:
+    name: aws
+  region: (( .context.imports.iaas_provider.landscape.region ))
+  purpose: (( .context.config.cluster.purpose ))
+  provider:
+    type: aws
+    controlPlaneConfig:
+      apiVersion: aws.provider.extensions.gardener.cloud/v1alpha1
+      cloudControllerManager:
+        useCustomRouteController: true
+      kind: ControlPlaneConfig
+      storage:
+        managedDefaultClass: true
+    infrastructureConfig:
+      apiVersion: aws.provider.extensions.gardener.cloud/v1alpha1
+      kind: InfrastructureConfig
+      networks:
+        vpc:
+          cidr: (( .context.config.cluster.cidr ))
+        zones:
+          - name: (( .context.imports.iaas_provider.landscape.region_zones_list.[0] ))
+            workers: (( .context.config.cluster.aws_zones.[0].workers ))
+            public: (( .context.config.cluster.aws_zones.[0].public ))
+            internal: (( .context.config.cluster.aws_zones.[0].internal ))
+          - name: (( .context.imports.iaas_provider.landscape.region_zones_list.[1] ))
+            workers: (( .context.config.cluster.aws_zones.[1].workers ))
+            public: (( .context.config.cluster.aws_zones.[1].public ))
+            internal: (( .context.config.cluster.aws_zones.[1].internal ))
+          - name: (( .context.imports.iaas_provider.landscape.region_zones_list.[2] ))
+            workers: (( .context.config.cluster.aws_zones.[2].workers ))
+            public: (( .context.config.cluster.aws_zones.[2].public ))
+            internal: (( .context.config.cluster.aws_zones.[2].internal ))
+    workers:
+      - cri:
+          name: containerd
+        name: vmetrics
+        machine:
+          type: m5.2xlarge
+          image:
+            name: gardenlinux
+            version: 1592.8.0
+          architecture: amd64
+        maximum: 6
+        minimum: 3
+        maxSurge: 3
+        maxUnavailable: 1
+        volume:
+          type: gp3
+          size: 100Gi
+        zones:
+          - (( .context.imports.iaas_provider.landscape.region_zones_list.[0] ))
+          - (( .context.imports.iaas_provider.landscape.region_zones_list.[1] ))
+          - (( .context.imports.iaas_provider.landscape.region_zones_list.[2] ))
+        systemComponents:
+          allow: true
+        updateStrategy: AutoRollingUpdate
+      - cri:
+          name: containerd
+        name: otel-col
+        machine:
+          type: m5.xlarge
+          image:
+            name: gardenlinux
+            version: 1592.8.0
+          architecture: amd64
+        maximum: 4
+        minimum: 2
+        maxSurge: 2
+        maxUnavailable: 1
+        volume:
+          type: gp3
+          size: 50Gi
+        zones:
+          - (( .context.imports.iaas_provider.landscape.region_zones_list.[1] ))
+          - (( .context.imports.iaas_provider.landscape.region_zones_list.[2] ))
+          - (( .context.imports.iaas_provider.landscape.region_zones_list.[0] ))
+        systemComponents:
+          allow: true
+        updateStrategy: AutoRollingUpdate
+      - cri:
+          name: containerd
+        name: generic
+        machine:
+          type: m5.xlarge
+          image:
+            name: gardenlinux
+            version: 1592.8.0
+          architecture: amd64
+        maximum: 4
+        minimum: 2
+        maxSurge: 2
+        maxUnavailable: 1
+        volume:
+          type: gp3
+          size: 40Gi
+        zones:
+          - (( .context.imports.iaas_provider.landscape.region_zones_list.[2] ))
+          - (( .context.imports.iaas_provider.landscape.region_zones_list.[1] ))
+          - (( .context.imports.iaas_provider.landscape.region_zones_list.[0] ))
+        systemComponents:
+          allow: true
+        updateStrategy: AutoRollingUpdate
+    workersSettings:
+      sshAccess:
+        enabled: true
+  kubernetes:
+    version: (( .context.config.cluster.k8s_version ))
+  dns:
+    domain: (( .context.config.cluster.name "." .context.config.cluster.project_name ".shoot.canary.k8s-hana.ondemand.com" ))
+  extensions:
+    - type: shoot-dns-service
+      providerConfig:
+        apiVersion: service.dns.extensions.gardener.cloud/v1alpha1
+        kind: DNSConfig
+        syncProvidersFromShootSpecDNS: true
+    - type: shoot-cert-service
+      providerConfig:
+        apiVersion: service.cert.extensions.gardener.cloud/v1alpha1
+        kind: CertConfig
+        shootIssuers:
+          enabled: true
+  networking:
+    type: calico
+    providerConfig:
+      overlay:
+        enabled: false
+    pods: 100.64.0.0/12
+    nodes: (( .context.config.cluster.cidr ))
+    services: 100.104.0.0/13
+    ipFamilies:
+      - IPv4
+  maintenance:
+    timeWindow:
+      begin: 220000+0100
+      end: 230000+0100
+    autoUpdate:
+      kubernetesVersion: true
+      machineImageVersion: true
+  monitoring:
+    alerting:
+      emailReceivers:
+        - (( .context.config.cluster.user_email ))
+  addons:
+    kubernetesDashboard:
+      enabled: false
+      authenticationMode: token
+    nginxIngress:
+      enabled: false
+      externalTrafficPolicy: Cluster
