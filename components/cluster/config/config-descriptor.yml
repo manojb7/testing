@@ -275,61 +275,94 @@ properties:
               type: string
               value: containerd
         machine:
-          image:
-            name:
-              $metadata:
-                message: Enter the machine image name to be used for the Gardener cluster
-                type: string
-                value:
-                  $match:
-                    - when: landscape.tags in ('awsgc')
-                      then: ubuntu
-                    - default: gardenlinux
-            version:
-              $metadata:
-                message: Enter the machine image version to be used for the Gardener cluster
-                type: string
-                value:
-                  $match:
-                    - when: landscape.tags in ('awsgc')
-                      then: '20.4.20250311'
-                    - default: '1592.8.0'
-          type:
-            $metadata:
-              message: Enter the instance generation type to be used for the nodes of the otel worker group
-              description: |-
-                This defines the instance type which will be used for provisioning the Kubernetes worker nodes for the OpenTelemetry workloads.
-              type: string
-              value:
-                $match:
-                  - when: landscape.type in ('aws') and landscape.environment = 'staging'
-                    then: 4cpu_8gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'staging'
-                    then: 4cpu_8gb
-                  - when: landscape.type in ('aws') and landscape.environment = 'canary'
-                    then: 8cpu_16gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'canary'
-                    then: 8cpu_16gb
-                  - when: landscape.type in ('aws') and landscape.environment = 'hotfix'
-                    then: 4cpu_8gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'hotfix'
-                    then: 4cpu_8gb
-                  - when: landscape.type in ('aws') and landscape.environment = 'live'
-                    then: 8cpu_16gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'live'
-                    then: 8cpu_16gb
+  type:
+    $metadata:
+      message: Enter the instance generation type to be used for the nodes
+      description: |-
+        This defines the instance type which will be used for provisioning the Kubernetes worker nodes.
+      type: string
+      value:
+        $match:
+          # AWS machine types
+          - when: landscape.type = 'aws' and landscape.environment = 'staging' and $current.path contains 'otel_worker_group'
+            then: m5.xlarge  # 4 vCPUs, 16 GB RAM
+          - when: landscape.type = 'aws' and landscape.environment = 'staging' and $current.path contains 'vm_worker_group'
+            then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'aws' and landscape.environment = 'staging' and $current.path contains 'plutono_worker_group'
+            then: m5.xlarge  # 4 vCPUs, 16 GB RAM
+          - when: landscape.type = 'aws' and landscape.environment in ('canary', 'live') and $current.path contains 'otel_worker_group'
+            then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'aws' and landscape.environment in ('canary', 'live') and $current.path contains 'vm_worker_group'
+            then: m5.4xlarge  # 16 vCPUs, 64 GB RAM
+          - when: landscape.type = 'aws' and landscape.environment in ('canary', 'live') and $current.path contains 'plutono_worker_group'
+            then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'aws' and landscape.environment = 'hotfix' and $current.path contains 'otel_worker_group'
+            then: m5.xlarge  # 4 vCPUs, 16 GB RAM
+          - when: landscape.type = 'aws' and landscape.environment = 'hotfix' and $current.path contains 'vm_worker_group'
+            then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'aws' and landscape.environment = 'hotfix' and $current.path contains 'plutono_worker_group'
+            then: m5.xlarge  # 4 vCPUs, 16 GB RAM
+            
+          # Azure machine types
+          - when: landscape.type = 'azure' and landscape.environment = 'staging' and $current.path contains 'otel_worker_group'
+            then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
+          - when: landscape.type = 'azure' and landscape.environment = 'staging' and $current.path contains 'vm_worker_group'
+            then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'azure' and landscape.environment = 'staging' and $current.path contains 'plutono_worker_group'
+            then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
+          - when: landscape.type = 'azure' and landscape.environment in ('canary', 'live') and $current.path contains 'otel_worker_group'
+            then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'azure' and landscape.environment in ('canary', 'live') and $current.path contains 'vm_worker_group'
+            then: Standard_D16s_v3  # 16 vCPUs, 64 GB RAM
+          - when: landscape.type = 'azure' and landscape.environment in ('canary', 'live') and $current.path contains 'plutono_worker_group'
+            then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'azure' and landscape.environment = 'hotfix' and $current.path contains 'otel_worker_group'
+            then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
+          - when: landscape.type = 'azure' and landscape.environment = 'hotfix' and $current.path contains 'vm_worker_group'
+            then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'azure' and landscape.environment = 'hotfix' and $current.path contains 'plutono_worker_group'
+            then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
+            
+          # GCP machine types
+          - when: landscape.type = 'gcp' and landscape.environment = 'staging' and $current.path contains 'otel_worker_group'
+            then: n2-standard-4  # 4 vCPUs, 16 GB RAM
+          - when: landscape.type = 'gcp' and landscape.environment = 'staging' and $current.path contains 'vm_worker_group'
+            then: n2-standard-8  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'gcp' and landscape.environment = 'staging' and $current.path contains 'plutono_worker_group'
+            then: n2-standard-4  # 4 vCPUs, 16 GB RAM
+          - when: landscape.type = 'gcp' and landscape.environment in ('canary', 'live') and $current.path contains 'otel_worker_group'
+            then: n2-standard-8  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'gcp' and landscape.environment in ('canary', 'live') and $current.path contains 'vm_worker_group'
+            then: n2-standard-16  # 16 vCPUs, 64 GB RAM
+          - when: landscape.type = 'gcp' and landscape.environment in ('canary', 'live') and $current.path contains 'plutono_worker_group'
+            then: n2-standard-8  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'gcp' and landscape.environment = 'hotfix' and $current.path contains 'otel_worker_group'
+            then: n2-standard-4  # 4 vCPUs, 16 GB RAM
+          - when: landscape.type = 'gcp' and landscape.environment = 'hotfix' and $current.path contains 'vm_worker_group'
+            then: n2-standard-8  # 8 vCPUs, 32 GB RAM
+          - when: landscape.type = 'gcp' and landscape.environment = 'hotfix' and $current.path contains 'plutono_worker_group'
+            then: n2-standard-4  # 4 vCPUs, 16 GB RAM
         volume:
-          type:
-            $metadata:
-              message: Enter the disk volume type to be used for the worker nodes of the otel worker group
-              description: |-
-                This defines the disk volume type which will be used for the volumes to be attached to the Kubernetes worker nodes
-                of the otel worker group.
-              type: string{1}
-              options:
-                - standard
-                - premium
-              value: standard
+  type:
+    $metadata:
+      message: Enter the disk volume type to be used for the worker nodes
+      description: |-
+        This defines the disk volume type which will be used for the volumes to be attached to the Kubernetes worker nodes.
+      type: string
+      value:
+        $match:
+          - when: landscape.type = 'aws' and $current.path contains 'standard'
+            then: gp3
+          - when: landscape.type = 'aws' and $current.path contains 'premium'
+            then: io1
+          - when: landscape.type = 'azure' and $current.path contains 'standard'
+            then: Standard_LRS
+          - when: landscape.type = 'azure' and $current.path contains 'premium'
+            then: Premium_LRS
+          - when: landscape.type = 'gcp' and $current.path contains 'standard'
+            then: pd-standard
+          - when: landscape.type = 'gcp' and $current.path contains 'premium'
+            then: pd-ssd
           size:
             $metadata:
               message: Enter the disk volume size (in GiB) to be used for the worker nodes of the otel worker group
