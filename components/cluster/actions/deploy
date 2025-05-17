@@ -52,7 +52,7 @@ def main():
         creation_status = gardener_helper.poll_shoot_status(timeout=3000, interval=10)
         if creation_status is True:
             name = config_object.cluster_name
-            namespace = config_object.namespace
+            namespace = config_object.gardener_namespace
             domain = config_object.get_dns_domain()
             kubeconfig = gardener_helper.get_kubeconfig()
             # we create a dict and convert that to yaml
