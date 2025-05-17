@@ -14,15 +14,11 @@ spec:
   provider:
     type: azure
 
-    # Provider-specific controlPlaneConfig
+    # Provider-specific controlPlaneConfig - now without unsupported feature gates
     controlPlaneConfig:
       apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
       kind: ControlPlaneConfig
-      cloudControllerManager:
-        featureGates:
-          UseInstanceMetadata: true
-      storage:
-        managedDefaultClass: true
+      # Removed unsupported featureGates
 
     # Provider-specific infrastructureConfig
     infrastructureConfig:
