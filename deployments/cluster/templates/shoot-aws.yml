@@ -42,7 +42,7 @@ spec:
     workers:
       - cri:
           name: containerd
-        name: vmetrics
+        name: vm
         machine:
           type: m5.2xlarge
           image:
@@ -65,7 +65,7 @@ spec:
         updateStrategy: AutoRollingUpdate
       - cri:
           name: containerd
-        name: otel-col
+        name: otel
         machine:
           type: m5.xlarge
           image:
@@ -88,7 +88,7 @@ spec:
         updateStrategy: AutoRollingUpdate
       - cri:
           name: containerd
-        name: generic
+        name: plutono
         machine:
           type: m5.xlarge
           image:
