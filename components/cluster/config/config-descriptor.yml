@@ -275,94 +275,68 @@ properties:
               type: string
               value: containerd
         machine:
-  type:
-    $metadata:
-      message: Enter the instance generation type to be used for the nodes
-      description: |-
-        This defines the instance type which will be used for provisioning the Kubernetes worker nodes.
-      type: string
-      value:
-        $match:
-          # AWS machine types
-          - when: landscape.type = 'aws' and landscape.environment = 'staging' and $current.path contains 'otel_worker_group'
-            then: m5.xlarge  # 4 vCPUs, 16 GB RAM
-          - when: landscape.type = 'aws' and landscape.environment = 'staging' and $current.path contains 'vm_worker_group'
-            then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'aws' and landscape.environment = 'staging' and $current.path contains 'plutono_worker_group'
-            then: m5.xlarge  # 4 vCPUs, 16 GB RAM
-          - when: landscape.type = 'aws' and landscape.environment in ('canary', 'live') and $current.path contains 'otel_worker_group'
-            then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'aws' and landscape.environment in ('canary', 'live') and $current.path contains 'vm_worker_group'
-            then: m5.4xlarge  # 16 vCPUs, 64 GB RAM
-          - when: landscape.type = 'aws' and landscape.environment in ('canary', 'live') and $current.path contains 'plutono_worker_group'
-            then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'aws' and landscape.environment = 'hotfix' and $current.path contains 'otel_worker_group'
-            then: m5.xlarge  # 4 vCPUs, 16 GB RAM
-          - when: landscape.type = 'aws' and landscape.environment = 'hotfix' and $current.path contains 'vm_worker_group'
-            then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'aws' and landscape.environment = 'hotfix' and $current.path contains 'plutono_worker_group'
-            then: m5.xlarge  # 4 vCPUs, 16 GB RAM
-            
-          # Azure machine types
-          - when: landscape.type = 'azure' and landscape.environment = 'staging' and $current.path contains 'otel_worker_group'
-            then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
-          - when: landscape.type = 'azure' and landscape.environment = 'staging' and $current.path contains 'vm_worker_group'
-            then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'azure' and landscape.environment = 'staging' and $current.path contains 'plutono_worker_group'
-            then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
-          - when: landscape.type = 'azure' and landscape.environment in ('canary', 'live') and $current.path contains 'otel_worker_group'
-            then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'azure' and landscape.environment in ('canary', 'live') and $current.path contains 'vm_worker_group'
-            then: Standard_D16s_v3  # 16 vCPUs, 64 GB RAM
-          - when: landscape.type = 'azure' and landscape.environment in ('canary', 'live') and $current.path contains 'plutono_worker_group'
-            then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'azure' and landscape.environment = 'hotfix' and $current.path contains 'otel_worker_group'
-            then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
-          - when: landscape.type = 'azure' and landscape.environment = 'hotfix' and $current.path contains 'vm_worker_group'
-            then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'azure' and landscape.environment = 'hotfix' and $current.path contains 'plutono_worker_group'
-            then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
-            
-          # GCP machine types
-          - when: landscape.type = 'gcp' and landscape.environment = 'staging' and $current.path contains 'otel_worker_group'
-            then: n2-standard-4  # 4 vCPUs, 16 GB RAM
-          - when: landscape.type = 'gcp' and landscape.environment = 'staging' and $current.path contains 'vm_worker_group'
-            then: n2-standard-8  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'gcp' and landscape.environment = 'staging' and $current.path contains 'plutono_worker_group'
-            then: n2-standard-4  # 4 vCPUs, 16 GB RAM
-          - when: landscape.type = 'gcp' and landscape.environment in ('canary', 'live') and $current.path contains 'otel_worker_group'
-            then: n2-standard-8  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'gcp' and landscape.environment in ('canary', 'live') and $current.path contains 'vm_worker_group'
-            then: n2-standard-16  # 16 vCPUs, 64 GB RAM
-          - when: landscape.type = 'gcp' and landscape.environment in ('canary', 'live') and $current.path contains 'plutono_worker_group'
-            then: n2-standard-8  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'gcp' and landscape.environment = 'hotfix' and $current.path contains 'otel_worker_group'
-            then: n2-standard-4  # 4 vCPUs, 16 GB RAM
-          - when: landscape.type = 'gcp' and landscape.environment = 'hotfix' and $current.path contains 'vm_worker_group'
-            then: n2-standard-8  # 8 vCPUs, 32 GB RAM
-          - when: landscape.type = 'gcp' and landscape.environment = 'hotfix' and $current.path contains 'plutono_worker_group'
-            then: n2-standard-4  # 4 vCPUs, 16 GB RAM
+          image:
+            name:
+              $metadata:
+                message: Enter the machine image name to be used for the Gardener cluster
+                type: string
+                value:
+                  $match:
+                    - when: landscape.tags in ('awsgc')
+                      then: ubuntu
+                    - default: gardenlinux
+            version:
+              $metadata:
+                message: Enter the machine image version to be used for the Gardener cluster
+                type: string
+                value:
+                  $match:
+                    - when: landscape.tags in ('awsgc')
+                      then: '20.4.20250311'
+                    - default: '1592.8.0'
+          type:
+            $metadata:
+              message: Enter the instance generation type to be used for the nodes of the otel worker group
+              description: |-
+                This defines the instance type which will be used for provisioning the Kubernetes worker nodes for the OpenTelemetry workloads.
+              type: string
+              value:
+                $match:
+                  # AWS machine types
+                  - when: landscape.type = 'aws' and landscape.environment = 'staging'
+                    then: m5.xlarge  # 4 vCPUs, 16 GB RAM
+                  - when: landscape.type = 'aws' and landscape.environment in ('canary', 'live')
+                    then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
+                  - when: landscape.type = 'aws' and landscape.environment = 'hotfix'
+                    then: m5.xlarge  # 4 vCPUs, 16 GB RAM
+                  
+                  # Azure machine types
+                  - when: landscape.type = 'azure' and landscape.environment = 'staging'
+                    then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
+                  - when: landscape.type = 'azure' and landscape.environment in ('canary', 'live')
+                    then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
+                  - when: landscape.type = 'azure' and landscape.environment = 'hotfix'
+                    then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
+                  
+                  # GCP machine types
+                  - when: landscape.type = 'gcp' and landscape.environment = 'staging'
+                    then: n2-standard-4  # 4 vCPUs, 16 GB RAM
+                  - when: landscape.type = 'gcp' and landscape.environment in ('canary', 'live')
+                    then: n2-standard-8  # 8 vCPUs, 32 GB RAM
+                  - when: landscape.type = 'gcp' and landscape.environment = 'hotfix'
+                    then: n2-standard-4  # 4 vCPUs, 16 GB RAM
         volume:
-  type:
-    $metadata:
-      message: Enter the disk volume type to be used for the worker nodes
-      description: |-
-        This defines the disk volume type which will be used for the volumes to be attached to the Kubernetes worker nodes.
-      type: string
-      value:
-        $match:
-          - when: landscape.type = 'aws' and $current.path contains 'standard'
-            then: gp3
-          - when: landscape.type = 'aws' and $current.path contains 'premium'
-            then: io1
-          - when: landscape.type = 'azure' and $current.path contains 'standard'
-            then: Standard_LRS
-          - when: landscape.type = 'azure' and $current.path contains 'premium'
-            then: Premium_LRS
-          - when: landscape.type = 'gcp' and $current.path contains 'standard'
-            then: pd-standard
-          - when: landscape.type = 'gcp' and $current.path contains 'premium'
-            then: pd-ssd
+          type:
+            $metadata:
+              message: Enter the disk volume type to be used for the worker nodes of the otel worker group
+              description: |-
+                This defines the disk volume type which will be used for the volumes to be attached to the Kubernetes worker nodes
+                of the otel worker group.
+              type: string{1}
+              options:
+                - standard
+                - premium
+              value: standard
           size:
             $metadata:
               message: Enter the disk volume size (in GiB) to be used for the worker nodes of the otel worker group
@@ -431,22 +405,29 @@ properties:
               type: string
               value:
                 $match:
-                  - when: landscape.type in ('aws') and landscape.environment = 'staging'
-                    then: 8cpu_16gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'staging'
-                    then: 8cpu_16gb
-                  - when: landscape.type in ('aws') and landscape.environment = 'canary'
-                    then: 16cpu_32gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'canary'
-                    then: 16cpu_32gb
-                  - when: landscape.type in ('aws') and landscape.environment = 'hotfix'
-                    then: 8cpu_16gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'hotfix'
-                    then: 8cpu_16gb
-                  - when: landscape.type in ('aws') and landscape.environment = 'live'
-                    then: 16cpu_32gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'live'
-                    then: 16cpu_32gb
+                  # AWS machine types
+                  - when: landscape.type = 'aws' and landscape.environment = 'staging'
+                    then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
+                  - when: landscape.type = 'aws' and landscape.environment in ('canary', 'live')
+                    then: m5.4xlarge  # 16 vCPUs, 64 GB RAM
+                  - when: landscape.type = 'aws' and landscape.environment = 'hotfix'
+                    then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
+                  
+                  # Azure machine types
+                  - when: landscape.type = 'azure' and landscape.environment = 'staging'
+                    then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
+                  - when: landscape.type = 'azure' and landscape.environment in ('canary', 'live')
+                    then: Standard_D16s_v3  # 16 vCPUs, 64 GB RAM
+                  - when: landscape.type = 'azure' and landscape.environment = 'hotfix'
+                    then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
+                  
+                  # GCP machine types
+                  - when: landscape.type = 'gcp' and landscape.environment = 'staging'
+                    then: n2-standard-8  # 8 vCPUs, 32 GB RAM
+                  - when: landscape.type = 'gcp' and landscape.environment in ('canary', 'live')
+                    then: n2-standard-16  # 16 vCPUs, 64 GB RAM
+                  - when: landscape.type = 'gcp' and landscape.environment = 'hotfix'
+                    then: n2-standard-8  # 8 vCPUs, 32 GB RAM
         volume:
           type:
             $metadata:
@@ -527,22 +508,29 @@ properties:
               type: string
               value:
                 $match:
-                  - when: landscape.type in ('aws') and landscape.environment = 'staging'
-                    then: 4cpu_8gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'staging'
-                    then: 4cpu_8gb
-                  - when: landscape.type in ('aws') and landscape.environment = 'canary'
-                    then: 8cpu_16gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'canary'
-                    then: 8cpu_16gb
-                  - when: landscape.type in ('aws') and landscape.environment = 'hotfix'
-                    then: 4cpu_8gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'hotfix'
-                    then: 4cpu_8gb
-                  - when: landscape.type in ('aws') and landscape.environment = 'live'
-                    then: 8cpu_16gb_network
-                  - when: landscape.type not in ('aws') and landscape.environment = 'live'
-                    then: 8cpu_16gb
+                  # AWS machine types
+                  - when: landscape.type = 'aws' and landscape.environment = 'staging'
+                    then: m5.xlarge  # 4 vCPUs, 16 GB RAM
+                  - when: landscape.type = 'aws' and landscape.environment in ('canary', 'live')
+                    then: m5.2xlarge  # 8 vCPUs, 32 GB RAM
+                  - when: landscape.type = 'aws' and landscape.environment = 'hotfix'
+                    then: m5.xlarge  # 4 vCPUs, 16 GB RAM
+                  
+                  # Azure machine types
+                  - when: landscape.type = 'azure' and landscape.environment = 'staging'
+                    then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
+                  - when: landscape.type = 'azure' and landscape.environment in ('canary', 'live')
+                    then: Standard_D8s_v3  # 8 vCPUs, 32 GB RAM
+                  - when: landscape.type = 'azure' and landscape.environment = 'hotfix'
+                    then: Standard_D4s_v3  # 4 vCPUs, 16 GB RAM
+                  
+                  # GCP machine types
+                  - when: landscape.type = 'gcp' and landscape.environment = 'staging'
+                    then: n2-standard-4  # 4 vCPUs, 16 GB RAM
+                  - when: landscape.type = 'gcp' and landscape.environment in ('canary', 'live')
+                    then: n2-standard-8  # 8 vCPUs, 32 GB RAM
+                  - when: landscape.type = 'gcp' and landscape.environment = 'hotfix'
+                    then: n2-standard-4  # 4 vCPUs, 16 GB RAM
         volume:
           type:
             $metadata:
@@ -567,3 +555,32 @@ properties:
                   - when: landscape.tags in ('awsgc')
                     then: 100Gi
                   - default: 40Gi
+    # Add converter for volume types based on cloud provider
+    volume_type_converter:
+      $metadata:
+        description: Maps the general volume types to provider-specific volume types
+        type: object
+      standard:
+        $metadata:
+          description: Standard volume type for each cloud provider
+          type: string
+          value:
+            $match:
+              - when: landscape.type = 'aws'
+                then: gp3
+              - when: landscape.type = 'azure'
+                then: Standard_LRS
+              - when: landscape.type = 'gcp'
+                then: pd-standard
+      premium:
+        $metadata:
+          description: Premium volume type for each cloud provider
+          type: string
+          value:
+            $match:
+              - when: landscape.type = 'aws'
+                then: io1
+              - when: landscape.type = 'azure'
+                then: Premium_LRS
+              - when: landscape.type = 'gcp'
+                then: pd-ssd
