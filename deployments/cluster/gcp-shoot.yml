@@ -18,8 +18,8 @@ spec:
     controlPlaneConfig:
       apiVersion: gcp.provider.extensions.gardener.cloud/v1alpha1
       kind: ControlPlaneConfig
-      # Use a lookup with fallback
-      zone: (( grab .context.imports.iaas_provider.landscape.zones.[0] || .context.imports.iaas_provider.landscape.zones[0] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[0] || .context.imports.iaas_provider.landscape.region "-" "b" ))
+      # Use direct reference to the first zone in the list
+      zone: (( .context.imports.iaas_provider.landscape.zones.[0] ))
 
     # Provider-specific infrastructureConfig
     infrastructureConfig:
@@ -45,11 +45,8 @@ spec:
         volume:
           type: (( .context.config.volume_type_converter.standard ))
           size: (( .context.config.cluster.vm_worker_group.volume.size ))
-        zones:
-          # Try different ways to access the zones, with fallbacks
-          - (( grab .context.imports.iaas_provider.landscape.zones.[0] || .context.imports.iaas_provider.landscape.zones[0] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[0] || .context.imports.iaas_provider.landscape.region "-" "b" ))
-          - (( grab .context.imports.iaas_provider.landscape.zones.[1] || .context.imports.iaas_provider.landscape.zones[1] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[1] || .context.imports.iaas_provider.landscape.region "-" "c" ))
-          - (( grab .context.imports.iaas_provider.landscape.zones.[2] || .context.imports.iaas_provider.landscape.zones[2] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[2] || .context.imports.iaas_provider.landscape.region "-" "d" ))
+        # Try to use all available zones directly
+        zones: (( .context.imports.iaas_provider.landscape.zones ))
         systemComponents:
           allow: true
         updateStrategy: AutoRollingUpdate
@@ -68,11 +65,8 @@ spec:
         volume:
           type: (( .context.config.volume_type_converter.standard ))
           size: (( .context.config.cluster.otel_worker_group.volume.size ))
-        zones:
-          # Different arrangement of the same zones
-          - (( grab .context.imports.iaas_provider.landscape.zones.[1] || .context.imports.iaas_provider.landscape.zones[1] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[1] || .context.imports.iaas_provider.landscape.region "-" "c" ))
-          - (( grab .context.imports.iaas_provider.landscape.zones.[2] || .context.imports.iaas_provider.landscape.zones[2] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[2] || .context.imports.iaas_provider.landscape.region "-" "d" ))
-          - (( grab .context.imports.iaas_provider.landscape.zones.[0] || .context.imports.iaas_provider.landscape.zones[0] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[0] || .context.imports.iaas_provider.landscape.region "-" "b" ))
+        # Use same zones as the first worker group
+        zones: (( .context.imports.iaas_provider.landscape.zones ))
         systemComponents:
           allow: true
         updateStrategy: AutoRollingUpdate
@@ -91,11 +85,8 @@ spec:
         volume:
           type: (( .context.config.volume_type_converter.standard ))
           size: (( .context.config.cluster.plutono_worker_group.volume.size ))
-        zones:
-          # Yet another arrangement of the same zones
-          - (( grab .context.imports.iaas_provider.landscape.zones.[2] || .context.imports.iaas_provider.landscape.zones[2] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[2] || .context.imports.iaas_provider.landscape.region "-" "d" ))
-          - (( grab .context.imports.iaas_provider.landscape.zones.[1] || .context.imports.iaas_provider.landscape.zones[1] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[1] || .context.imports.iaas_provider.landscape.region "-" "c" ))
-          - (( grab .context.imports.iaas_provider.landscape.zones.[0] || .context.imports.iaas_provider.landscape.zones[0] || .context.imports.iaas_provider.landscape.region "-" .context.imports.iaas_provider.landscape.landscape_zones_list.[0] || .context.imports.iaas_provider.landscape.region "-" "b" ))
+        # Use same zones as the first worker group
+        zones: (( .context.imports.iaas_provider.landscape.zones ))
         systemComponents:
           allow: true
         updateStrategy: AutoRollingUpdate
