@@ -9,6 +9,6 @@ context:
   landscape: (( .landscape ))
   credentials: (( .credentials ))
   imports: (( .imports ))
-  vm_name: vmmon
-  gardener_namespace: garden-perftests
-  shoot_yaml_name: shoot.yml
+  vm_name: (( .context.config.cluster.name ))
+  gardener_namespace: ( .context.config.cluster.project_name ))
+  shoot_yaml_name: (( .context.shoot_yaml_name ))
